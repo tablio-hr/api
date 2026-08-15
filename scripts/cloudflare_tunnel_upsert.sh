@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Stage only: remotely-managed tunnel ingress AND proxied CNAME.
 # Both steps are required. Uses CF_DNS_TOKEN_STAGE. Never reads Traefik ACME tokens.
+# Ingress is merged: non-allowlist hostnames on a shared tunnel are preserved.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -53,14 +54,25 @@ CNAME_TARGET="${TUNNEL_ID}.cfargotunnel.com"
 ingress_ok=0
 cname_ok=0
 
-# Remotely-managed public hostnames (Cloudflare Tunnel config).
-# Preserve Host: HTTP origin, no host rewrite.
-ingress_payload="$(python3 - <<PY
-import json
-names = """${NAMES}""".split()
-ingress = [{"hostname": n, "service": "${INGRESS_SERVICE}"} for n in names]
-ingress.append({"service": "http_status:404"})
-print(json.dumps({"config": {"ingress": ingress}}))
+# Remotely-managed public hostnames. Merge: keep non-allowlist hosts, replace
+# only Tablio stage names. Preserve Host (HTTP origin, no host rewrite).
+existing_cfg="$(cf_api GET "/accounts/${ACCOUNT_ID}/cfd_tunnel/${TUNNEL_ID}/configurations")"
+ingress_payload="$(
+  NAMES="$NAMES" INGRESS_SERVICE="$INGRESS_SERVICE" EXISTING_JSON="$existing_cfg" python3 - <<'PY'
+import json, os
+names = os.environ["NAMES"].split()
+service = os.environ["INGRESS_SERVICE"]
+existing = json.loads(os.environ.get("EXISTING_JSON") or "{}")
+config = ((existing.get("result") or {}).get("config") or {})
+keep = []
+for rule in config.get("ingress") or []:
+    host = rule.get("hostname")
+    if host and host not in names:
+        keep.append(rule)
+config["ingress"] = keep + [{"hostname": n, "service": service} for n in names] + [
+    {"service": "http_status:404"}
+]
+print(json.dumps({"config": config}))
 PY
 )"
 ingress_resp="$(cf_api PUT "/accounts/${ACCOUNT_ID}/cfd_tunnel/${TUNNEL_ID}/configurations" "$ingress_payload")"

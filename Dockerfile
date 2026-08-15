@@ -11,9 +11,8 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends libpq5 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.lock requirements.txt
-RUN pip install --no-cache-dir --require-hashes -r requirements.lock \
-    || pip install --no-cache-dir -r requirements.txt
+COPY requirements.lock requirements.txt ./
+RUN pip install --no-cache-dir --require-hashes -r requirements.lock
 
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 COPY scripts/run-gunicorn.sh /app/scripts/run-gunicorn.sh
