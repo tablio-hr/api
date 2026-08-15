@@ -1,0 +1,101 @@
+services:
+  django-migrate:
+    build: .
+    image: tablio-api-django:latest
+    env_file:
+      - .env
+    networks:
+      - postgis
+      - hetzner_net
+      - tablio_internal
+    command:
+      - sh
+      - -c
+      - python manage.py migrate --noinput && python manage.py collectstatic --noinput
+    restart: "no"
+
+  django:
+    build: .
+    image: tablio-api-django:latest
+    container_name: tablio_django
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      django-migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready/', timeout=5)",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    command: ["/app/scripts/run-gunicorn.sh"]
+    volumes:
+      - ./data/media:/app/backend/media
+    networks:
+      postgis: {}
+      proxy: {}
+      hetzner_net: {}
+      tablio_internal:
+        aliases:
+          - tablio-django
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      - traefik.http.routers.tablio-api.rule=Host(`${TABLIO_API_HOST}`)
+      - traefik.http.routers.tablio-api.entrypoints=websecure
+      - traefik.http.routers.tablio-api.tls=true
+      - traefik.http.routers.tablio-api.tls.certresolver=cloudflare
+      - traefik.http.routers.tablio-api.service=tablio-django
+      - traefik.http.routers.tablio-api.priority=100
+      - traefik.http.routers.tablio-admin.rule=Host(`${TABLIO_ADMIN_HOST}`)
+      - traefik.http.routers.tablio-admin.entrypoints=websecure
+      - traefik.http.routers.tablio-admin.tls=true
+      - traefik.http.routers.tablio-admin.tls.certresolver=cloudflare
+      - traefik.http.routers.tablio-admin.service=tablio-django
+      - traefik.http.routers.tablio-admin.priority=100
+      - traefik.http.services.tablio-django.loadbalancer.server.port=8000
+
+  django-run:
+    profiles: ["test-run"]
+    build: .
+    image: tablio-api-django:latest
+    env_file:
+      - .env
+    networks:
+      - postgis
+      - tablio_internal
+      - hetzner_net
+
+  celery-worker:
+    build: .
+    image: tablio-api-django:latest
+    container_name: tablio_celery_worker
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      django-migrate:
+        condition: service_completed_successfully
+    networks:
+      - postgis
+      - tablio_internal
+      - hetzner_net
+    command: ["celery", "-A", "config", "worker", "-l", "info"]
+
+networks:
+  postgis:
+    external: true
+  proxy:
+    external: true
+  hetzner_net:
+    external: true
+  tablio_internal:
+    driver: bridge
