@@ -1,0 +1,7 @@
+.git
+.env
+.env.local
+**/__pycache__
+**/*.pyc
+data/media/*
+!data/media/.gitkeep
