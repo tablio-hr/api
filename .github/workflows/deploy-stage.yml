@@ -1,0 +1,34 @@
+name: Deploy stage
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-stage
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy stage
+    runs-on: [self-hosted, stage]
+    environment: stage
+    timeout-minutes: 30
+    env:
+      CF_DNS_TOKEN_STAGE: ${{ secrets.CF_DNS_TOKEN_STAGE }}
+      CLOUDFLARE_TUNNEL_ID: ${{ secrets.CLOUDFLARE_TUNNEL_ID }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Guard environment
+        run: |
+          set -euo pipefail
+          test -z "${{ secrets.DEPLOY_HOST }}" || { echo "stage must not have HEL1 DEPLOY_HOST"; exit 1; }
+          test -n "${CF_DNS_TOKEN_STAGE}"
+          test -z "${{ secrets.CF_DNS_TOKEN_PRODUCTION }}" || { echo "stage must not read production DNS token"; exit 1; }
+      - name: Deploy
+        working-directory: /opt/stacks/tablio.hr/api
+        run: |
+          set -euo pipefail
+          unset SSH_AUTH_SOCK || true
+          ./scripts/deploy-stage.sh

@@ -1,0 +1,59 @@
+name: Deploy production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy production
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 30
+    steps:
+      - name: Guard environment
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          CF_DNS_TOKEN_PRODUCTION: ${{ secrets.CF_DNS_TOKEN_PRODUCTION }}
+          CF_DNS_TOKEN_STAGE: ${{ secrets.CF_DNS_TOKEN_STAGE }}
+          CLOUDFLARE_TUNNEL_ID: ${{ secrets.CLOUDFLARE_TUNNEL_ID }}
+        run: |
+          set -euo pipefail
+          test -n "${DEPLOY_HOST}"
+          test -n "${DEPLOY_USER}"
+          test -n "${DEPLOY_SSH_KEY}"
+          test -n "${CF_DNS_TOKEN_PRODUCTION}"
+          test -z "${CF_DNS_TOKEN_STAGE:-}" || { echo "production must not read stage DNS token"; exit 1; }
+          test -z "${CLOUDFLARE_TUNNEL_ID:-}" || { echo "production must not read stage tunnel id"; exit 1; }
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.2
+        env:
+          CF_DNS_TOKEN_PRODUCTION: ${{ secrets.CF_DNS_TOKEN_PRODUCTION }}
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_SSH_PORT || 22 }}
+          command_timeout: 30m
+          envs: CF_DNS_TOKEN_PRODUCTION
+          script: |
+            set -euo pipefail
+            unset SSH_AUTH_SOCK || true
+            cd /opt/stacks/tablio.hr/api
+            export CF_DNS_TOKEN_PRODUCTION
+            branch="$(git branch --show-current)"
+            [[ "$branch" == "main" ]] || { echo "expected main"; exit 1; }
+            git fetch origin main
+            git checkout main
+            git pull --ff-only origin main
+            ./scripts/cloudflare_dns_upsert.sh
+            docker compose up -d --build django-migrate
+            docker compose up -d django celery-worker
+            echo "production deploy finished $(git rev-parse --short HEAD)"
