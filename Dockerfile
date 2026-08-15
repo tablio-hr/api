@@ -27,5 +27,11 @@ RUN groupadd --gid 1000 tablio \
 
 WORKDIR /app/backend
 USER tablio
+# collectstatic must live in the image. The migrate oneshot writes to its own
+# container filesystem and is discarded before gunicorn starts.
+ENV DJANGO_SETTINGS_MODULE=config.settings.production \
+    DJANGO_SECRET_KEY=collectstatic-build \
+    DB_PASSWORD=collectstatic-build
+RUN python manage.py collectstatic --noinput
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["/app/scripts/run-gunicorn.sh"]
