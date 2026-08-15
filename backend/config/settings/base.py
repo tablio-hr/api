@@ -114,6 +114,7 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "apps.api.authentication.AppKeyAuthentication",
     ],
+    "EXCEPTION_HANDLER": "apps.api.exceptions.exception_handler",
     "UNAUTHENTICATED_USER": None,
 }
 

@@ -6,6 +6,10 @@ from apps.tenants.tokens import default_key_prefix, display_prefix, generate_tok
 VALID_SCOPES = frozenset({"public:read", "admin:read", "admin:write"})
 
 
+class OperatorTenantManager(models.Manager):
+    """Unscoped operator/platform lookup. Not for tenant API request paths."""
+
+
 class Tenant(models.Model):
     class Status(models.TextChoices):
         ACTIVE = "active", "Active"
@@ -17,6 +21,9 @@ class Tenant(models.Model):
     timezone = models.CharField(max_length=64, default="UTC")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    objects = models.Manager()
+    operator_objects = OperatorTenantManager()
 
     class Meta:
         ordering = ["name"]

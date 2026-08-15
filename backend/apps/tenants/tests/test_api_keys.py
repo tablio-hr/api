@@ -1,11 +1,14 @@
 from datetime import timedelta
 from io import StringIO
+from unittest.mock import patch
 
 from django.core.management import call_command
-from django.test import TestCase, override_settings
+from django.test import RequestFactory, TestCase, override_settings
 from django.utils import timezone
 
+from apps.api.views import AppConfigView
 from apps.core.querysets import for_request_tenant
+from apps.tenants.middleware import TenantHostMiddleware
 from apps.tenants.models import ApiApplication, Tenant, TenantDomain
 from apps.tenants.tokens import hash_token, verify_token
 
@@ -81,14 +84,55 @@ class ApiKeyContractTests(TestCase):
         self.assertTrue(verify_token(raw_lines[0], app.public_key_hash))
         self.assertNotEqual(raw_lines[0], app.public_key_hash)
 
-    def test_suspended_tenant_key_is_401(self):
+    def test_suspended_tenant_key_is_generic_404(self):
         self.tenant.status = Tenant.Status.SUSPENDED
         self.tenant.save(update_fields=["status"])
         _, token = ApiApplication.create_with_token(
             tenant=self.tenant, name="sus", scopes=["public:read"]
         )
-        response = self.client.get("/api/v1/app/config", **self._auth(token))
-        self.assertEqual(response.status_code, 401)
+        captured = {}
+
+        def _mark_view_ran(self, request):
+            captured["ran"] = True
+            captured["tenant"] = getattr(request, "tenant", "missing")
+            captured["app"] = getattr(request, "api_application", "missing")
+            raise AssertionError("view must not run")
+
+        from rest_framework.exceptions import NotFound
+        from rest_framework.test import APIRequestFactory
+
+        from apps.api.authentication import AppKeyAuthentication
+
+        factory = APIRequestFactory()
+        auth_request = factory.get("/api/v1/app/config", HTTP_AUTHORIZATION=f"Bearer {token}")
+        auth_request.tenant = None
+        auth_request.api_application = None
+        with self.assertRaises(NotFound):
+            AppKeyAuthentication().authenticate(auth_request)
+        self.assertIsNone(auth_request.tenant)
+        self.assertIsNone(auth_request.api_application)
+
+        with patch.object(AppConfigView, "get", _mark_view_ran):
+            response = self.client.get("/api/v1/app/config", **self._auth(token))
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json(), {"detail": "Not found.", "code": "not_found"})
+        body = response.content.decode()
+        self.assertNotIn("demo", body)
+        self.assertNotIn("suspended", body.lower())
+        self.assertNotIn(str(self.tenant.pk), body)
+        self.assertFalse(captured.get("ran"))
+
+    def test_host_does_not_select_tenant(self):
+        TenantDomain.objects.create(
+            tenant=self.tenant,
+            domain="ghost.tablio.hr",
+            is_verified=True,
+        )
+        factory = RequestFactory()
+        request = factory.get("/", HTTP_HOST="ghost.tablio.hr")
+        TenantHostMiddleware(lambda req: req)(request)
+        self.assertIsNone(request.tenant)
+        self.assertIsNone(request.api_application)
 
     def test_unknown_tenant_domain_does_not_default(self):
         TenantDomain.objects.create(

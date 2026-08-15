@@ -3,7 +3,7 @@ from datetime import timedelta
 from django.contrib.auth.models import AnonymousUser
 from django.utils import timezone
 from rest_framework.authentication import BaseAuthentication
-from rest_framework.exceptions import AuthenticationFailed
+from rest_framework.exceptions import AuthenticationFailed, NotFound
 
 from apps.tenants.models import ApiApplication, Tenant
 from apps.tenants.tokens import extract_token_from_request, hash_token, verify_token
@@ -38,7 +38,9 @@ class AppKeyAuthentication(BaseAuthentication):
         if application.expires_at is not None and application.expires_at <= now:
             raise AuthenticationFailed("Invalid API key.")
         if application.tenant.status != Tenant.Status.ACTIVE:
-            raise AuthenticationFailed("Invalid API key.")
+            request.tenant = None
+            request.api_application = None
+            raise NotFound(detail="Not found.", code="not_found")
 
         request.tenant = application.tenant
         request.api_application = application

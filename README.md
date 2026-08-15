@@ -1,6 +1,8 @@
 # Tablio API
 
-Django + DRF + Celery platform for Tablio. Feature work lands on `develop` (WSL stage). Production is `main` on dedicated-hel1 after **Promote to production**.
+Django + DRF + Celery platform for Tablio. Boundaries are locked in [ADR 0001](https://github.com/tablio-hr/docs/blob/develop/architecture/adr/0001-platform-deployment-and-tenancy-boundary.md): **the host selects the surface; authentication selects the tenant.**
+
+Feature work lands on `develop` (WSL stage). Production is `main` on dedicated-hel1 after **Promote to production**.
 
 ## Hosts
 
