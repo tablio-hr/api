@@ -55,12 +55,20 @@ services:
       - traefik.http.routers.tablio-api.tls.certresolver=cloudflare
       - traefik.http.routers.tablio-api.service=tablio-django
       - traefik.http.routers.tablio-api.priority=100
+      - traefik.http.routers.tablio-api-http.rule=Host(`${TABLIO_API_HOST}`)
+      - traefik.http.routers.tablio-api-http.entrypoints=web
+      - traefik.http.routers.tablio-api-http.service=tablio-django
+      - traefik.http.routers.tablio-api-http.priority=100
       - traefik.http.routers.tablio-admin.rule=Host(`${TABLIO_ADMIN_HOST}`)
       - traefik.http.routers.tablio-admin.entrypoints=websecure
       - traefik.http.routers.tablio-admin.tls=true
       - traefik.http.routers.tablio-admin.tls.certresolver=cloudflare
       - traefik.http.routers.tablio-admin.service=tablio-django
       - traefik.http.routers.tablio-admin.priority=100
+      - traefik.http.routers.tablio-admin-http.rule=Host(`${TABLIO_ADMIN_HOST}`)
+      - traefik.http.routers.tablio-admin-http.entrypoints=web
+      - traefik.http.routers.tablio-admin-http.service=tablio-django
+      - traefik.http.routers.tablio-admin-http.priority=100
       - traefik.http.services.tablio-django.loadbalancer.server.port=8000
 
   django-run:
