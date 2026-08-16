@@ -51,6 +51,18 @@ Staff login issues a Bearer token (`tablio_st_…`) with an absolute 12-hour `ex
 
 Slice 1 plan: [001-tenant-location-auth-context](https://github.com/tablio-hr/docs/blob/develop/architecture/implementation/001-tenant-location-auth-context.md).
 
+## Tests
+
+Tests run only on PostGIS (`config.settings.test`). SQLite is not used. Django
+creates a throwaway `test_*` database; it does not assert against the live
+`DB_NAME`. The role must be able to `CREATE`/`DROP` that database — the stage
+`tablio` role on the shared PostGIS cannot. Use a throwaway PostGIS, same as
+PR CI:
+
+```bash
+./scripts/run-tests.sh
+```
+
 ## Release
 
 ```text

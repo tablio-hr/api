@@ -32,7 +32,7 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
-      DJANGO_SETTINGS_MODULE: config.settings.test_postgis
+      DJANGO_SETTINGS_MODULE: config.settings.test
       DJANGO_SECRET_KEY: ci-secret-key-not-for-production
       DB_HOST: localhost
       DB_PORT: "5432"

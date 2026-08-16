@@ -3,7 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from unittest import skipUnless
 from unittest.mock import patch
 
-from django.db import connection, transaction
+from django.db import connection, connections, transaction
 from django.test import TestCase, TransactionTestCase, override_settings
 from datetime import timedelta
 
@@ -431,6 +431,10 @@ class ParallelStaffCommandTests(TransactionTestCase):
         )
         self.host = {"HTTP_HOST": "api.tablio.hr"}
 
+    def tearDown(self):
+        connections.close_all()
+        super().tearDown()
+
     def _login(self):
         response = self.client.post(
             "/api/v1/auth/staff/login",
@@ -480,15 +484,18 @@ class ParallelStaffCommandTests(TransactionTestCase):
         ).json()["token"]
 
         def _end(actor_token, target_id, key):
-            client = self.client_class()
-            return client.post(
-                f"/api/v1/staff/memberships/{target_id}/episodes:end",
-                data={},
-                content_type="application/json",
-                HTTP_AUTHORIZATION=f"Bearer {actor_token}",
-                HTTP_IDEMPOTENCY_KEY=key,
-                HTTP_HOST="api.tablio.hr",
-            ).status_code
+            try:
+                client = self.client_class()
+                return client.post(
+                    f"/api/v1/staff/memberships/{target_id}/episodes:end",
+                    data={},
+                    content_type="application/json",
+                    HTTP_AUTHORIZATION=f"Bearer {actor_token}",
+                    HTTP_IDEMPOTENCY_KEY=key,
+                    HTTP_HOST="api.tablio.hr",
+                ).status_code
+            finally:
+                connections.close_all()
 
         with ThreadPoolExecutor(max_workers=2) as pool:
             first = pool.submit(_end, token, membership_id, str(uuid.uuid4()))
@@ -528,15 +535,18 @@ class ParallelStaffCommandTests(TransactionTestCase):
         self.assertEqual(ended.status_code, 200)
 
         def _activate(key):
-            client = self.client_class()
-            return client.post(
-                f"/api/v1/staff/memberships/{membership_id}/episodes:activate",
-                data={},
-                content_type="application/json",
-                HTTP_AUTHORIZATION=f"Bearer {token}",
-                HTTP_IDEMPOTENCY_KEY=key,
-                HTTP_HOST="api.tablio.hr",
-            )
+            try:
+                client = self.client_class()
+                return client.post(
+                    f"/api/v1/staff/memberships/{membership_id}/episodes:activate",
+                    data={},
+                    content_type="application/json",
+                    HTTP_AUTHORIZATION=f"Bearer {token}",
+                    HTTP_IDEMPOTENCY_KEY=key,
+                    HTTP_HOST="api.tablio.hr",
+                )
+            finally:
+                connections.close_all()
 
         with ThreadPoolExecutor(max_workers=2) as pool:
             first = pool.submit(_activate, str(uuid.uuid4()))
@@ -556,15 +566,18 @@ class ParallelStaffCommandTests(TransactionTestCase):
         key = str(uuid.uuid4())
 
         def _create():
-            client = self.client_class()
-            return client.post(
-                "/api/v1/locations",
-                data={"name": "Parallel Hall"},
-                content_type="application/json",
-                HTTP_AUTHORIZATION=f"Bearer {token}",
-                HTTP_IDEMPOTENCY_KEY=key,
-                HTTP_HOST="api.tablio.hr",
-            ).status_code
+            try:
+                client = self.client_class()
+                return client.post(
+                    "/api/v1/locations",
+                    data={"name": "Parallel Hall"},
+                    content_type="application/json",
+                    HTTP_AUTHORIZATION=f"Bearer {token}",
+                    HTTP_IDEMPOTENCY_KEY=key,
+                    HTTP_HOST="api.tablio.hr",
+                ).status_code
+            finally:
+                connections.close_all()
 
         with ThreadPoolExecutor(max_workers=2) as pool:
             codes = sorted([pool.submit(_create).result(), pool.submit(_create).result()])

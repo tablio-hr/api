@@ -1,10 +1,12 @@
 import os
 
+from django.core.exceptions import ImproperlyConfigured
+
 os.environ.setdefault("DJANGO_SECRET_KEY", "test-secret-key-not-for-production")
-os.environ.setdefault("DB_PASSWORD", "unused")
 os.environ.setdefault("DJANGO_ALLOWED_HOSTS", "testserver,127.0.0.1,localhost,tablio-django")
 
 from .base import *  # noqa: E402, F403
+from .base import env
 
 DEBUG = False
 SECRET_KEY = "test-secret-key-not-for-production"
@@ -23,12 +25,23 @@ CSRF_TRUSTED_ORIGINS = [
     "https://admin-stage.tablio.hr",
 ]
 
+# Tests run only on PostgreSQL/PostGIS — the same engine as production and PR CI.
+# Django creates a throwaway `test_*` database from this connection; it does not
+# run assertions against the live NAME.
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": ":memory:",
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": env("DB_NAME", default="tablio_platform_test_db"),
+        "USER": env("DB_USER", default="tablio"),
+        "PASSWORD": env("DB_PASSWORD", default="tablio"),
+        "HOST": env("DB_HOST", default="localhost"),
+        "PORT": env("DB_PORT", default="5432"),
+        "CONN_MAX_AGE": 0,
     }
 }
+
+if DATABASES["default"]["ENGINE"] != "django.db.backends.postgresql":
+    raise ImproperlyConfigured("Tablio tests run only on PostgreSQL/PostGIS.")
 
 SECURE_SSL_REDIRECT = True
 SECURE_HSTS_SECONDS = 0
