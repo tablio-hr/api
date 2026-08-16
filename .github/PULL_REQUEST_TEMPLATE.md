@@ -15,6 +15,6 @@
 runs-on for new/changed workflows:
   PR CI / Docker: [self-hosted, linux, x64, tablio, docker]
   no Docker:      [self-hosted, linux, x64, tablio, default]
-  stage deploy:   [self-hosted, stage]   # WSL only
+Stage deploy is manual on WSL (`./scripts/deploy-stage.sh`), not Actions.
 PostGIS in CI: publish 55432:5432 (HEL1 already uses 5432).
 -->

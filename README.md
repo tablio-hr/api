@@ -66,12 +66,13 @@ PR CI:
 ```
 
 PR CI runs on dedicated-hel1 (`tablio-docker-runner`). HEL1 already binds
-`127.0.0.1:5432`, so the job publishes PostGIS on `55432`. Stage deploy stays
-on WSL and is not this runner. See [AGENTS.md](AGENTS.md).
+`127.0.0.1:5432`, so the job publishes PostGIS on `55432`. Stage deploy is
+manual on WSL (`./scripts/deploy-stage.sh`), not a GitHub Actions job. See
+[AGENTS.md](AGENTS.md).
 
 ## Release
 
 ```text
-feature PR → CI → develop stage deploy → stage smoke
+feature PR → CI → develop → manual WSL stage deploy → stage smoke
   → Promote to production PR → main production deploy → production smoke
 ```

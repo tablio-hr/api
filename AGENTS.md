@@ -25,10 +25,10 @@ They are already registered — do not add **New runner**.
 |-----|-----------|
 | PR CI / Docker / `services:` | `[self-hosted, linux, x64, tablio, docker]` |
 | lint / tests without Docker | `[self-hosted, linux, x64, tablio, default]` |
-| Stage deploy | `[self-hosted, stage]` (WSL only) |
 
-CI on dedicated-hel1 is allowed. Stage **deploy** stays on WSL. Never put a
-`stage` label on the HEL1 runners.
+CI on dedicated-hel1 is allowed. Stage **deploy** is manual on WSL
+(`./scripts/deploy-stage.sh`). There is no GitHub Actions stage runner.
+Never put a `stage` label on the HEL1 runners.
 
 HEL1 already uses `127.0.0.1:5432`. In `.github/workflows/pr-ci.yml` publish
 PostGIS as `55432:5432` and set `DB_PORT: "55432"`. Do not map `5432:5432`.
