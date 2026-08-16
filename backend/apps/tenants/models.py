@@ -1,5 +1,7 @@
-from django.conf import settings
+import uuid
+
 from django.db import models
+from django.db.models.functions import Lower
 
 from apps.tenants.tokens import default_key_prefix, display_prefix, generate_token, hash_token
 
@@ -15,6 +17,7 @@ class Tenant(models.Model):
         ACTIVE = "active", "Active"
         SUSPENDED = "suspended", "Suspended"
 
+    public_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     name = models.CharField(max_length=255)
     slug = models.SlugField(max_length=64, unique=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.ACTIVE)
@@ -51,26 +54,57 @@ class TenantDomain(models.Model):
         return self.domain
 
 
-class TenantMembership(models.Model):
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="tenant_memberships",
-    )
-    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name="memberships")
+class BusinessLocation(models.Model):
+    tenant = models.ForeignKey(Tenant, on_delete=models.PROTECT, related_name="locations")
+    public_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    name = models.CharField(max_length=255)
+    timezone = models.CharField(max_length=64)
+    is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ["tenant__name", "user__username"]
+        ordering = ["name"]
         constraints = [
+            models.UniqueConstraint(fields=["id", "tenant"], name="tenants_location_unique_id_tenant"),
+            models.UniqueConstraint(fields=["tenant", "public_id"], name="tenants_location_unique_tenant_public"),
+            models.UniqueConstraint(Lower("name"), "tenant", name="tenants_location_unique_tenant_lname"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.name} ({self.tenant.slug})"
+
+
+class StorageArea(models.Model):
+    CODE_MAIN = "MAIN"
+
+    tenant = models.ForeignKey(Tenant, on_delete=models.PROTECT, related_name="storage_areas")
+    location = models.ForeignKey(
+        BusinessLocation,
+        on_delete=models.PROTECT,
+        related_name="storage_areas",
+    )
+    public_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    code = models.CharField(max_length=32)
+    name = models.CharField(max_length=64)
+    is_default = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["location_id", "code"]
+        constraints = [
+            models.UniqueConstraint(fields=["location", "code"], name="tenants_storage_unique_location_code"),
             models.UniqueConstraint(
-                fields=["user", "tenant"],
-                name="tenants_membership_unique_user_tenant",
+                fields=["location"],
+                condition=models.Q(is_default=True),
+                name="tenants_storage_one_default_per_location",
             ),
         ]
 
     def __str__(self) -> str:
-        return f"{self.user} → {self.tenant}"
+        return f"{self.code} @ {self.location_id}"
 
 
 class ApiApplication(models.Model):

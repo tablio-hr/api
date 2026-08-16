@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "apps.core",
     "apps.tenants",
+    "apps.identity",
     "apps.api",
 ]
 
