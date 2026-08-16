@@ -10,6 +10,8 @@ Feature work lands on `develop` (WSL stage). Production is `main` on dedicated-h
 - Production: `admin.tablio.hr` (admin only), `api.tablio.hr` (API only)
 - Cross-surface requests return 404. Unknown `Host` returns 400.
 
+`POST /api/v1/early-access` is a public platform endpoint (no API key, no tenant). Browser CORS is limited to `https://stage.tablio.hr` and `https://tablio.hr`. Leads are listed in Django admin. After a successful save the API emails `info@tablio.hr` and sends a confirmation from `noreply@tablio.hr`. An SMTP failure is logged and does not delete the lead.
+
 ## Database
 
 Django containers use the existing PostGIS service on the external `postgis` network:
