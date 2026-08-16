@@ -39,6 +39,16 @@ Create an API key (printed once):
 docker compose --profile test-run run --rm django-run python manage.py create_api_app --tenant demo --name "demo"
 ```
 
+Stage seed (not production, not PR CI). Passwords come from env or are printed once:
+
+```bash
+docker compose --profile test-run run --rm django-run python manage.py seed_stage_tenants
+```
+
+A changed env password does not overwrite a stored password unless you pass `--reset-admin-password`.
+
+Slice 1 plan: [001-tenant-location-auth-context](https://github.com/tablio-hr/docs/blob/develop/architecture/implementation/001-tenant-location-auth-context.md).
+
 ## Release
 
 ```text

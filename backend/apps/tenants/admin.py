@@ -1,12 +1,13 @@
 from django.contrib import admin
 
-from apps.tenants.models import ApiApplication, Tenant, TenantDomain, TenantMembership
+from apps.tenants.models import ApiApplication, BusinessLocation, StorageArea, Tenant, TenantDomain
 
 
 @admin.register(Tenant)
 class TenantAdmin(admin.ModelAdmin):
-    list_display = ("name", "slug", "status")
+    list_display = ("name", "slug", "status", "public_id")
     search_fields = ("name", "slug")
+    readonly_fields = ("public_id",)
 
 
 @admin.register(TenantDomain)
@@ -14,9 +15,17 @@ class TenantDomainAdmin(admin.ModelAdmin):
     list_display = ("domain", "tenant", "is_verified", "is_primary")
 
 
-@admin.register(TenantMembership)
-class TenantMembershipAdmin(admin.ModelAdmin):
-    list_display = ("user", "tenant")
+@admin.register(BusinessLocation)
+class BusinessLocationAdmin(admin.ModelAdmin):
+    list_display = ("name", "tenant", "timezone", "is_active")
+    search_fields = ("name",)
+    readonly_fields = ("public_id",)
+
+
+@admin.register(StorageArea)
+class StorageAreaAdmin(admin.ModelAdmin):
+    list_display = ("code", "name", "location", "tenant", "is_default", "is_active")
+    readonly_fields = ("public_id",)
 
 
 @admin.register(ApiApplication)
