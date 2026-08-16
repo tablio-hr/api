@@ -11,7 +11,7 @@ concurrency:
 jobs:
   backend:
     name: PR CI / backend
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, tablio, docker]
     timeout-minutes: 20
     defaults:
       run:
@@ -25,17 +25,17 @@ jobs:
           POSTGRES_PASSWORD: tablio
           POSTGRES_DB: tablio_platform_test_db
         ports:
-          - 5432:5432
+          - 55432:5432
         options: >-
           --health-cmd "pg_isready -U tablio -d tablio_platform_test_db"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
     env:
-      DJANGO_SETTINGS_MODULE: config.settings.test_postgis
+      DJANGO_SETTINGS_MODULE: config.settings.test
       DJANGO_SECRET_KEY: ci-secret-key-not-for-production
       DB_HOST: localhost
-      DB_PORT: "5432"
+      DB_PORT: "55432"
       DB_NAME: tablio_platform_test_db
       DB_USER: tablio
       DB_PASSWORD: tablio

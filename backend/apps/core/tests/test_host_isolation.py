@@ -24,6 +24,16 @@ class HostIsolationTests(TestCase):
             response = self.client.get("/api/v1/app/config", HTTP_HOST=host, **self.auth)
             self.assertEqual(response.status_code, 404, host)
 
+    def test_early_access_on_admin_hosts_is_404(self):
+        for host in ("admin.tablio.hr", "admin-stage.tablio.hr"):
+            response = self.client.post(
+                "/api/v1/early-access",
+                data={"name": "Ana", "email": "ana@x.hr", "interest": "general"},
+                content_type="application/json",
+                HTTP_HOST=host,
+            )
+            self.assertEqual(response.status_code, 404, host)
+
     def test_api_on_api_host_is_not_isolation_404(self):
         response = self.client.get(
             "/api/v1/app/config",

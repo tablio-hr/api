@@ -1,0 +1,175 @@
+# Applied by identity.0002. Do not change this tuple after it shipped on the PR branch.
+COMPOSITE_FOREIGN_KEYS = (
+    {
+        "table": "tenants_storagearea",
+        "name": "tenants_storage_location_tenant_fk",
+        "columns": ("location_id", "tenant_id"),
+        "target": "tenants_businesslocation",
+        "target_columns": ("id", "tenant_id"),
+    },
+    {
+        "table": "identity_membershipepisode",
+        "name": "identity_episode_membership_tenant_fk",
+        "columns": ("staff_membership_id", "tenant_id"),
+        "target": "identity_staffmembership",
+        "target_columns": ("id", "tenant_id"),
+    },
+    {
+        "table": "identity_locationassignment",
+        "name": "identity_loc_assign_membership_tenant_fk",
+        "columns": ("staff_membership_id", "tenant_id"),
+        "target": "identity_staffmembership",
+        "target_columns": ("id", "tenant_id"),
+    },
+    {
+        "table": "identity_locationassignment",
+        "name": "identity_loc_assign_episode_tenant_fk",
+        "columns": ("membership_episode_id", "tenant_id"),
+        "target": "identity_membershipepisode",
+        "target_columns": ("id", "tenant_id"),
+    },
+    {
+        "table": "identity_locationassignment",
+        "name": "identity_loc_assign_location_tenant_fk",
+        "columns": ("location_id", "tenant_id"),
+        "target": "tenants_businesslocation",
+        "target_columns": ("id", "tenant_id"),
+    },
+    {
+        "table": "identity_roleassignment",
+        "name": "identity_role_assign_membership_tenant_fk",
+        "columns": ("staff_membership_id", "tenant_id"),
+        "target": "identity_staffmembership",
+        "target_columns": ("id", "tenant_id"),
+    },
+    {
+        "table": "identity_roleassignment",
+        "name": "identity_role_assign_episode_tenant_fk",
+        "columns": ("membership_episode_id", "tenant_id"),
+        "target": "identity_membershipepisode",
+        "target_columns": ("id", "tenant_id"),
+    },
+    {
+        "table": "identity_roleassignment",
+        "name": "identity_role_assign_location_tenant_fk",
+        "columns": ("location_id", "tenant_id"),
+        "target": "tenants_businesslocation",
+        "target_columns": ("id", "tenant_id"),
+    },
+)
+
+# Applied by identity.0003. Replaces pairwise assignment FKs with episode+membership+tenant.
+REPLACED_ASSIGNMENT_FOREIGN_KEYS = (
+    "identity_loc_assign_membership_tenant_fk",
+    "identity_loc_assign_episode_tenant_fk",
+    "identity_role_assign_membership_tenant_fk",
+    "identity_role_assign_episode_tenant_fk",
+)
+
+EPISODE_MEMBERSHIP_FOREIGN_KEYS = (
+    {
+        "table": "identity_locationassignment",
+        "name": "identity_loc_assign_episode_membership_tenant_fk",
+        "columns": ("membership_episode_id", "staff_membership_id", "tenant_id"),
+        "target": "identity_membershipepisode",
+        "target_columns": ("id", "staff_membership_id", "tenant_id"),
+    },
+    {
+        "table": "identity_roleassignment",
+        "name": "identity_role_assign_episode_membership_tenant_fk",
+        "columns": ("membership_episode_id", "staff_membership_id", "tenant_id"),
+        "target": "identity_membershipepisode",
+        "target_columns": ("id", "staff_membership_id", "tenant_id"),
+    },
+)
+
+
+def _add_sql(spec: dict) -> str:
+    cols = ", ".join(spec["columns"])
+    refs = ", ".join(spec["target_columns"])
+    return (
+        f'ALTER TABLE "{spec["table"]}" ADD CONSTRAINT "{spec["name"]}" '
+        f"FOREIGN KEY ({cols}) REFERENCES \"{spec['target']}\" ({refs})"
+    )
+
+
+def _drop_sql(table: str, name: str) -> str:
+    return f'ALTER TABLE "{table}" DROP CONSTRAINT IF EXISTS "{name}"'
+
+
+def apply_composite_foreign_keys(apps, schema_editor):
+    if schema_editor.connection.vendor != "postgresql":
+        return
+    with schema_editor.connection.cursor() as cursor:
+        for spec in COMPOSITE_FOREIGN_KEYS:
+            cursor.execute(_add_sql(spec))
+
+
+def drop_composite_foreign_keys(apps, schema_editor):
+    if schema_editor.connection.vendor != "postgresql":
+        return
+    with schema_editor.connection.cursor() as cursor:
+        for spec in reversed(COMPOSITE_FOREIGN_KEYS):
+            cursor.execute(_drop_sql(spec["table"], spec["name"]))
+
+
+def apply_episode_membership_foreign_keys(apps, schema_editor):
+    if schema_editor.connection.vendor != "postgresql":
+        return
+    drops = {
+        "identity_loc_assign_membership_tenant_fk": "identity_locationassignment",
+        "identity_loc_assign_episode_tenant_fk": "identity_locationassignment",
+        "identity_role_assign_membership_tenant_fk": "identity_roleassignment",
+        "identity_role_assign_episode_tenant_fk": "identity_roleassignment",
+    }
+    with schema_editor.connection.cursor() as cursor:
+        for name, table in drops.items():
+            cursor.execute(_drop_sql(table, name))
+        for spec in EPISODE_MEMBERSHIP_FOREIGN_KEYS:
+            cursor.execute(_add_sql(spec))
+
+
+def drop_episode_membership_foreign_keys(apps, schema_editor):
+    if schema_editor.connection.vendor != "postgresql":
+        return
+    restored = [spec for spec in COMPOSITE_FOREIGN_KEYS if spec["name"] in REPLACED_ASSIGNMENT_FOREIGN_KEYS]
+    with schema_editor.connection.cursor() as cursor:
+        for spec in reversed(EPISODE_MEMBERSHIP_FOREIGN_KEYS):
+            cursor.execute(_drop_sql(spec["table"], spec["name"]))
+        for spec in restored:
+            cursor.execute(_add_sql(spec))
+
+
+# Applied by identity.0004. Session is bound to episode+membership+tenant.
+SESSION_FOREIGN_KEYS = (
+    {
+        "table": "identity_staffaccesssession",
+        "name": "identity_session_membership_tenant_fk",
+        "columns": ("staff_membership_id", "tenant_id"),
+        "target": "identity_staffmembership",
+        "target_columns": ("id", "tenant_id"),
+    },
+    {
+        "table": "identity_staffaccesssession",
+        "name": "identity_session_episode_membership_tenant_fk",
+        "columns": ("membership_episode_id", "staff_membership_id", "tenant_id"),
+        "target": "identity_membershipepisode",
+        "target_columns": ("id", "staff_membership_id", "tenant_id"),
+    },
+)
+
+
+def apply_session_foreign_keys(apps, schema_editor):
+    if schema_editor.connection.vendor != "postgresql":
+        return
+    with schema_editor.connection.cursor() as cursor:
+        for spec in SESSION_FOREIGN_KEYS:
+            cursor.execute(_add_sql(spec))
+
+
+def drop_session_foreign_keys(apps, schema_editor):
+    if schema_editor.connection.vendor != "postgresql":
+        return
+    with schema_editor.connection.cursor() as cursor:
+        for spec in reversed(SESSION_FOREIGN_KEYS):
+            cursor.execute(_drop_sql(spec["table"], spec["name"]))
