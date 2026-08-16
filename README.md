@@ -73,6 +73,6 @@ manual on WSL (`./scripts/deploy-stage.sh`), not a GitHub Actions job. See
 ## Release
 
 ```text
-feature PR → CI → develop → manual WSL stage deploy → stage smoke
-  → Promote to production PR → main production deploy → production smoke
+WSL develop (direct commit) → manual stage deploy → stage smoke
+  → Promote to production PR → CI → main → production deploy
 ```
