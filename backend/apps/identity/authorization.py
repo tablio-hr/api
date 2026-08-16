@@ -138,6 +138,41 @@ def authorize(
     )
 
 
+def tenant_permissions(authz: AuthorizationContext) -> frozenset[str]:
+    return _permissions_for(
+        authz.role_assignments,
+        [row for row in authz.location_assignments if row.scope_type == ScopeType.TENANT],
+        None,
+    )
+
+
+def has_permission_anywhere(authz: AuthorizationContext, permission: str) -> bool:
+    if permission in tenant_permissions(authz):
+        return True
+    locations = {
+        row.location_id
+        for row in authz.location_assignments
+        if row.scope_type == ScopeType.LOCATION and row.location_id
+    }
+    for location_id in locations:
+        location = next(row.location for row in authz.location_assignments if row.location_id == location_id)
+        covering = [row for row in authz.location_assignments if _covers_target(row, location)]
+        if permission in _permissions_for(authz.role_assignments, covering, location):
+            return True
+    return False
+
+
+def visible_location_ids(authz: AuthorizationContext) -> set[int] | None:
+    """None means every location of the tenant (TENANT assignment)."""
+    if any(row.scope_type == ScopeType.TENANT for row in authz.location_assignments):
+        return None
+    return {
+        row.location_id
+        for row in authz.location_assignments
+        if row.scope_type == ScopeType.LOCATION and row.location_id
+    }
+
+
 def context_payload(authz: AuthorizationContext) -> dict:
     tenant_permissions = _permissions_for(
         authz.role_assignments,

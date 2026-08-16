@@ -58,5 +58,7 @@ class MeContextView(APIView):
     permission_classes = [HasStaffSession]
 
     def get(self, request):
+        request._audit_action = "me.context"
         authz = authorize(session=request.staff_session)
+        request._audit_authz = authz
         return Response(context_payload(authz))
