@@ -15,6 +15,7 @@ env = environ.Env(
     DJANGO_CSRF_TRUSTED_ORIGINS=(list, []),
     DB_CONN_MAX_AGE=(int, 60),
     TABLIO_STAFF_SESSION_TTL_HOURS=(int, 12),
+    TABLIO_IDEMPOTENCY_LEASE_SECONDS=(int, 30),
 )
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -31,6 +32,7 @@ TABLIO_API_HOST = env("TABLIO_API_HOST", default="api-stage.tablio.hr")
 TABLIO_API_KEY_PREFIX = env("TABLIO_API_KEY_PREFIX", default="tablio_pk_test_")
 TABLIO_STAFF_TOKEN_PREFIX = env("TABLIO_STAFF_TOKEN_PREFIX", default="tablio_st_")
 TABLIO_STAFF_SESSION_TTL_HOURS = env("TABLIO_STAFF_SESSION_TTL_HOURS")
+TABLIO_IDEMPOTENCY_LEASE_SECONDS = env("TABLIO_IDEMPOTENCY_LEASE_SECONDS")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -43,6 +45,7 @@ INSTALLED_APPS = [
     "apps.core",
     "apps.tenants",
     "apps.identity",
+    "apps.audit",
     "apps.api",
     "apps.leads",
 ]
