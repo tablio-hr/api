@@ -11,6 +11,7 @@ from apps.identity.models import (
     MembershipEpisode,
     RoleAssignment,
     ScopeType,
+    StaffAccessSession,
     StaffMembership,
     UserIdentity,
 )
@@ -300,4 +301,35 @@ class CompositeTenantFKTests(TestCase):
                     location=None,
                     status=AssignmentStatus.ACTIVE,
                     valid_from=timezone.now(),
+                )
+
+    def test_session_cannot_bind_other_membership_episode(self):
+        other_identity = UserIdentity.objects.create(
+            name="Cara",
+            primary_login="cara@x.hr",
+            status=UserIdentity.Status.ACTIVE,
+            password="x",
+        )
+        membership_b = StaffMembership.objects.create(
+            tenant=self.tenant_a,
+            user_identity=other_identity,
+            staff_number="3",
+        )
+        episode_b = MembershipEpisode.objects.create(
+            tenant=self.tenant_a,
+            staff_membership=membership_b,
+            version=1,
+            status=MembershipEpisode.Status.ACTIVE,
+            valid_from=timezone.now(),
+        )
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                StaffAccessSession.objects.create(
+                    tenant=self.tenant_a,
+                    staff_membership=self.membership_a,
+                    membership_episode=episode_b,
+                    authorization_generation=0,
+                    token_prefix="tablio_st_xxxx",
+                    token_hash="a" * 64,
+                    expires_at=timezone.now() + timedelta(hours=1),
                 )

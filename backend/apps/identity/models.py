@@ -268,3 +268,37 @@ class RoleAssignment(models.Model):
 
     def __str__(self) -> str:
         return f"{self.role_version_id} @ {self.staff_membership_id}"
+
+
+class StaffAccessSession(models.Model):
+    tenant = models.ForeignKey(Tenant, on_delete=models.PROTECT, related_name="staff_access_sessions")
+    staff_membership = models.ForeignKey(
+        StaffMembership,
+        on_delete=models.PROTECT,
+        related_name="access_sessions",
+    )
+    membership_episode = models.ForeignKey(
+        MembershipEpisode,
+        on_delete=models.PROTECT,
+        related_name="access_sessions",
+    )
+    public_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    authorization_generation = models.PositiveIntegerField()
+    token_prefix = models.CharField(max_length=32)
+    token_hash = models.CharField(max_length=64, unique=True)
+    expires_at = models.DateTimeField()
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(fields=["id", "tenant"], name="identity_session_unique_id_tenant"),
+            models.UniqueConstraint(
+                fields=["id", "staff_membership", "tenant"],
+                name="identity_session_unique_id_membership_tenant",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return self.token_prefix

@@ -47,6 +47,8 @@ docker compose --profile test-run run --rm django-run python manage.py seed_stag
 
 A changed env password does not overwrite a stored password unless you pass `--reset-admin-password`.
 
+Staff login issues a Bearer token (`tablio_st_…`) with an absolute 12-hour `expires_at`. The raw token is shown once; only prefix + hash are stored. Logout is idempotent (`204`). A request must not send a staff Bearer token and an API key together (`400`).
+
 Slice 1 plan: [001-tenant-location-auth-context](https://github.com/tablio-hr/docs/blob/develop/architecture/implementation/001-tenant-location-auth-context.md).
 
 ## Release

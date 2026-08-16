@@ -138,3 +138,38 @@ def drop_episode_membership_foreign_keys(apps, schema_editor):
             cursor.execute(_drop_sql(spec["table"], spec["name"]))
         for spec in restored:
             cursor.execute(_add_sql(spec))
+
+
+# Applied by identity.0004. Session is bound to episode+membership+tenant.
+SESSION_FOREIGN_KEYS = (
+    {
+        "table": "identity_staffaccesssession",
+        "name": "identity_session_membership_tenant_fk",
+        "columns": ("staff_membership_id", "tenant_id"),
+        "target": "identity_staffmembership",
+        "target_columns": ("id", "tenant_id"),
+    },
+    {
+        "table": "identity_staffaccesssession",
+        "name": "identity_session_episode_membership_tenant_fk",
+        "columns": ("membership_episode_id", "staff_membership_id", "tenant_id"),
+        "target": "identity_membershipepisode",
+        "target_columns": ("id", "staff_membership_id", "tenant_id"),
+    },
+)
+
+
+def apply_session_foreign_keys(apps, schema_editor):
+    if schema_editor.connection.vendor != "postgresql":
+        return
+    with schema_editor.connection.cursor() as cursor:
+        for spec in SESSION_FOREIGN_KEYS:
+            cursor.execute(_add_sql(spec))
+
+
+def drop_session_foreign_keys(apps, schema_editor):
+    if schema_editor.connection.vendor != "postgresql":
+        return
+    with schema_editor.connection.cursor() as cursor:
+        for spec in reversed(SESSION_FOREIGN_KEYS):
+            cursor.execute(_drop_sql(spec["table"], spec["name"]))

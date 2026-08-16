@@ -4,6 +4,8 @@ from rest_framework.permissions import BasePermission
 
 class HasApiApplication(BasePermission):
     def has_permission(self, request, view) -> bool:
+        if getattr(request, "staff_session", None) is not None:
+            raise NotAuthenticated("Invalid API key.")
         if getattr(request, "api_application", None) is None:
             raise NotAuthenticated("Invalid API key.")
         return True
@@ -17,3 +19,12 @@ class HasRequiredScopes(BasePermission):
         required = getattr(view, "required_scopes", [])
         granted = set(application.scopes or [])
         return set(required).issubset(granted)
+
+
+class HasStaffSession(BasePermission):
+    def has_permission(self, request, view) -> bool:
+        if getattr(request, "api_application", None) is not None:
+            raise NotAuthenticated(detail="Authentication required.", code="not_authenticated")
+        if getattr(request, "staff_session", None) is None:
+            raise NotAuthenticated(detail="Authentication required.", code="not_authenticated")
+        return True

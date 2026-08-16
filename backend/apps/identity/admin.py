@@ -6,6 +6,7 @@ from apps.identity.models import (
     Role,
     RoleAssignment,
     RoleVersion,
+    StaffAccessSession,
     StaffMembership,
     UserIdentity,
 )
@@ -50,3 +51,9 @@ class RoleVersionAdmin(admin.ModelAdmin):
 class RoleAssignmentAdmin(admin.ModelAdmin):
     list_display = ("staff_membership", "role_version", "scope_type", "status")
     readonly_fields = ("public_id",)
+
+
+@admin.register(StaffAccessSession)
+class StaffAccessSessionAdmin(admin.ModelAdmin):
+    list_display = ("token_prefix", "staff_membership", "expires_at", "revoked_at")
+    readonly_fields = ("public_id", "token_prefix", "token_hash", "authorization_generation")
