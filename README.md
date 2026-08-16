@@ -65,6 +65,10 @@ PR CI:
 ./scripts/run-tests.sh
 ```
 
+PR CI runs on dedicated-hel1 (`tablio-docker-runner`). HEL1 already binds
+`127.0.0.1:5432`, so the job publishes PostGIS on `55432`. Stage deploy stays
+on WSL and is not this runner. See [AGENTS.md](AGENTS.md).
+
 ## Release
 
 ```text
