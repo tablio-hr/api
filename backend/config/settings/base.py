@@ -2,7 +2,12 @@ from pathlib import Path
 
 import environ
 
-from config.hosts import TABLIO_ADMIN_HOSTS, TABLIO_API_HOSTS, TABLIO_INTERNAL_HOSTS
+from config.hosts import (
+    TABLIO_ADMIN_HOSTS,
+    TABLIO_API_HOSTS,
+    TABLIO_INTERNAL_HOSTS,
+    TABLIO_MARKETING_ORIGINS,
+)
 
 env = environ.Env(
     DJANGO_DEBUG=(bool, False),
@@ -42,6 +47,7 @@ INSTALLED_APPS = [
     "apps.identity",
     "apps.audit",
     "apps.api",
+    "apps.leads",
 ]
 
 MIDDLEWARE = [
@@ -123,7 +129,27 @@ REST_FRAMEWORK = {
     ],
     "EXCEPTION_HANDLER": "apps.api.exceptions.exception_handler",
     "UNAUTHENTICATED_USER": None,
+    "DEFAULT_THROTTLE_RATES": {
+        "early_access": "10/hour",
+    },
 }
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "tablio-default",
+    }
+}
+
+EMAIL_HOST = env("EMAIL_HOST", default="mail.tablio.hr")
+EMAIL_PORT = env.int("EMAIL_PORT", default=587)
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="info@tablio.hr")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="noreply@tablio.hr")
+EARLY_ACCESS_NOTIFY_EMAIL = env("EARLY_ACCESS_NOTIFY_EMAIL", default="info@tablio.hr")
+TURNSTILE_SECRET_KEY = env("TURNSTILE_SECRET_KEY", default="")
+TURNSTILE_REQUIRED = env.bool("TURNSTILE_REQUIRED", default=False)
 
 REDIS_URL = env("REDIS_URL", default="redis://infra-redis:6379/4")
 CELERY_BROKER_URL = env("CELERY_BROKER_URL", default=REDIS_URL)
@@ -158,3 +184,4 @@ LOGGING = {
 TABLIO_ADMIN_HOSTS = TABLIO_ADMIN_HOSTS
 TABLIO_API_HOSTS = TABLIO_API_HOSTS
 TABLIO_INTERNAL_HOSTS = TABLIO_INTERNAL_HOSTS
+TABLIO_MARKETING_ORIGINS = TABLIO_MARKETING_ORIGINS

@@ -1,4 +1,5 @@
 TABLIO_ADMIN_HOSTS = frozenset({"admin.tablio.hr", "admin-stage.tablio.hr"})
 TABLIO_API_HOSTS = frozenset({"api.tablio.hr", "api-stage.tablio.hr"})
 TABLIO_INTERNAL_HOSTS = frozenset({"127.0.0.1", "localhost", "tablio-django"})
+TABLIO_MARKETING_ORIGINS = frozenset({"https://stage.tablio.hr", "https://tablio.hr"})
 HEALTH_PATHS = frozenset({"/health/", "/ready/"})
