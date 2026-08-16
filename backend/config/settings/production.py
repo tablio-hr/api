@@ -1,5 +1,5 @@
 from .base import *  # noqa: F403
-from .base import env
+from .base import REDIS_URL, env
 
 DEBUG = False
 
@@ -14,3 +14,12 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
+
+TURNSTILE_REQUIRED = env.bool("TURNSTILE_REQUIRED", default=True)
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": REDIS_URL,
+    }
+}

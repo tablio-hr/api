@@ -37,6 +37,7 @@ SECURE_HSTS_PRELOAD = False
 
 CELERY_TASK_ALWAYS_EAGER = True
 CELERY_TASK_EAGER_PROPAGATES = True
+TURNSTILE_REQUIRED = False
 
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
