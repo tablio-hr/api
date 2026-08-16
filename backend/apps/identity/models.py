@@ -105,6 +105,14 @@ class MembershipEpisode(models.Model):
         constraints = [
             models.UniqueConstraint(fields=["id", "tenant"], name="identity_episode_unique_id_tenant"),
             models.UniqueConstraint(
+                fields=["id", "staff_membership", "tenant"],
+                name="identity_episode_unique_id_membership_tenant",
+            ),
+            models.UniqueConstraint(
+                fields=["staff_membership", "version"],
+                name="identity_episode_unique_membership_version",
+            ),
+            models.UniqueConstraint(
                 fields=["staff_membership"],
                 condition=models.Q(status__in=["invited", "active", "suspended"]),
                 name="identity_episode_one_current",

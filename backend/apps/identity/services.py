@@ -2,6 +2,7 @@ import secrets
 from dataclasses import dataclass
 
 from django.db import transaction
+from django.db.models import Max
 from django.utils import timezone
 
 from apps.identity.login import normalize_primary_login
@@ -111,23 +112,8 @@ def bootstrap_tenant(
         user_identity=identity,
         defaults={"staff_number": staff_number},
     )
-
-    episode = (
-        MembershipEpisode.objects.filter(
-            staff_membership=membership,
-            status__in=MembershipEpisode.CURRENT_STATUSES,
-        )
-        .order_by("version")
-        .first()
-    )
-    if episode is None:
-        episode = MembershipEpisode.objects.create(
-            tenant=tenant,
-            staff_membership=membership,
-            version=1,
-            status=MembershipEpisode.Status.ACTIVE,
-            valid_from=now,
-        )
+    membership = StaffMembership.objects.select_for_update().get(pk=membership.pk)
+    episode = _current_or_next_episode(membership=membership, tenant=tenant, now=now)
 
     for location_name in location_names:
         get_or_create_business_location(
@@ -168,6 +154,32 @@ def bootstrap_tenant(
         created_tenant=created_tenant,
         password_set=password_set,
         generated_password=generated_password,
+    )
+
+
+def _current_or_next_episode(*, membership: StaffMembership, tenant: Tenant, now) -> MembershipEpisode:
+    current = (
+        MembershipEpisode.objects.filter(
+            staff_membership=membership,
+            status__in=MembershipEpisode.CURRENT_STATUSES,
+        )
+        .order_by("version")
+        .first()
+    )
+    if current is not None:
+        return current
+    max_version = (
+        MembershipEpisode.objects.filter(staff_membership=membership).aggregate(Max("version"))[
+            "version__max"
+        ]
+    )
+    next_version = 1 if max_version is None else max_version + 1
+    return MembershipEpisode.objects.create(
+        tenant=tenant,
+        staff_membership=membership,
+        version=next_version,
+        status=MembershipEpisode.Status.ACTIVE,
+        valid_from=now,
     )
 
 

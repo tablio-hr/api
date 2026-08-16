@@ -1,8 +1,16 @@
+from datetime import timedelta
+
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import TestCase, override_settings
 
-from apps.identity.models import LocationAssignment, RoleAssignment, StaffMembership, UserIdentity
+from apps.identity.models import (
+    LocationAssignment,
+    MembershipEpisode,
+    RoleAssignment,
+    StaffMembership,
+    UserIdentity,
+)
 from apps.identity.services import bootstrap_tenant, seed_stage_tenants
 from apps.tenants.models import BusinessLocation, StorageArea, Tenant
 
@@ -79,6 +87,36 @@ class BootstrapTenantTests(TestCase):
         self.assertTrue(result.password_set)
         result.identity.refresh_from_db()
         self.assertTrue(result.identity.check_password("second-pass"))
+
+    def test_bootstrap_after_ended_episode_increments_version(self):
+        first = bootstrap_tenant(
+            slug="demo-a",
+            name="Demo A",
+            timezone_name="Europe/Zagreb",
+            admin_login="admin@demo.hr",
+            admin_name="Admin",
+            admin_password="first-pass",
+            location_names=["Front"],
+        )
+        first.episode.status = MembershipEpisode.Status.ENDED
+        first.episode.valid_until = first.episode.valid_from + timedelta(seconds=1)
+        first.episode.save(update_fields=["status", "valid_until", "updated_at"])
+
+        second = bootstrap_tenant(
+            slug="demo-a",
+            name="Demo A",
+            timezone_name="Europe/Zagreb",
+            admin_login="admin@demo.hr",
+            admin_name="Admin",
+            admin_password="first-pass",
+            location_names=["Front"],
+        )
+        self.assertEqual(second.episode.version, 2)
+        self.assertEqual(second.episode.status, MembershipEpisode.Status.ACTIVE)
+        self.assertEqual(
+            MembershipEpisode.objects.filter(staff_membership=first.membership).count(),
+            2,
+        )
 
 
 class SeedStageTenantsTests(TestCase):

@@ -1,3 +1,4 @@
+from datetime import timedelta
 from unittest import skipUnless
 
 from django.db import IntegrityError, connection, transaction
@@ -121,6 +122,31 @@ class MembershipConstraintTests(TestCase):
                     valid_from=now,
                 )
 
+    def test_episode_version_unique_per_membership(self):
+        membership = StaffMembership.objects.create(
+            tenant=self.tenant,
+            user_identity=self.identity,
+            staff_number="1",
+        )
+        now = timezone.now()
+        MembershipEpisode.objects.create(
+            tenant=self.tenant,
+            staff_membership=membership,
+            version=1,
+            status=MembershipEpisode.Status.ENDED,
+            valid_from=now,
+            valid_until=now + timedelta(days=1),
+        )
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                MembershipEpisode.objects.create(
+                    tenant=self.tenant,
+                    staff_membership=membership,
+                    version=1,
+                    status=MembershipEpisode.Status.ACTIVE,
+                    valid_from=now,
+                )
+
 
 class AssignmentScopeTests(TestCase):
     def setUp(self):
@@ -229,6 +255,49 @@ class CompositeTenantFKTests(TestCase):
                     role_version=self.role_version,
                     scope_type=ScopeType.LOCATION,
                     location=self.location_b,
+                    status=AssignmentStatus.ACTIVE,
+                    valid_from=timezone.now(),
+                )
+
+    def test_assignment_cannot_bind_other_membership_episode(self):
+        other_identity = UserIdentity.objects.create(
+            name="Bea",
+            primary_login="bea@x.hr",
+            status=UserIdentity.Status.ACTIVE,
+            password="x",
+        )
+        membership_b = StaffMembership.objects.create(
+            tenant=self.tenant_a,
+            user_identity=other_identity,
+            staff_number="2",
+        )
+        episode_b = MembershipEpisode.objects.create(
+            tenant=self.tenant_a,
+            staff_membership=membership_b,
+            version=1,
+            status=MembershipEpisode.Status.ACTIVE,
+            valid_from=timezone.now(),
+        )
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                LocationAssignment.objects.create(
+                    tenant=self.tenant_a,
+                    staff_membership=self.membership_a,
+                    membership_episode=episode_b,
+                    scope_type=ScopeType.TENANT,
+                    location=None,
+                    status=AssignmentStatus.ACTIVE,
+                    valid_from=timezone.now(),
+                )
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                RoleAssignment.objects.create(
+                    tenant=self.tenant_a,
+                    staff_membership=self.membership_a,
+                    membership_episode=episode_b,
+                    role_version=self.role_version,
+                    scope_type=ScopeType.TENANT,
+                    location=None,
                     status=AssignmentStatus.ACTIVE,
                     valid_from=timezone.now(),
                 )
